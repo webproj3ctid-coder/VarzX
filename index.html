@@ -73,6 +73,7 @@ header h1 { font-size: 1.35em; background: linear-gradient(90deg, var(--neon-pur
 .panel.active { display: block; animation: fadeIn 0.4s ease; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
 h2 { color: #fff; margin-bottom: 15px; font-size: 1.3em; }
+h3 { color: #00ffff; margin: 20px 0 12px; font-size: 1.05em; }
 .info { background: linear-gradient(90deg, rgba(0, 255, 255, 0.08), transparent); border-left: 3px solid var(--neon-cyan); padding: 12px 16px; border-radius: 8px; margin-bottom: 22px; color: #a0aec0; font-size: 0.88em; }
 
 /* FORM */
@@ -82,6 +83,7 @@ input:focus, textarea:focus, select:focus { outline: none; border-color: var(--n
 textarea { min-height: 150px; resize: vertical; font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 0.9em; line-height: 1.5; }
 button { padding: 13px 24px; background: linear-gradient(135deg, var(--neon-purple), var(--neon-cyan)); border: none; border-radius: 10px; color: #fff; font-weight: 700; cursor: pointer; transition: all 0.3s; margin-right: 10px; margin-bottom: 8px; font-size: 0.92em; }
 button:hover { transform: translateY(-3px); box-shadow: 0 10px 30px rgba(180, 0, 255, 0.5); }
+button:disabled { opacity: 0.6; cursor: wait; }
 button.secondary { background: rgba(40, 40, 60, 0.9); border: 2px solid rgba(180, 0, 255, 0.3); }
 .modeSwitch { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
 .modeSwitch button { background: rgba(30, 30, 50, 0.9); border: 2px solid rgba(180, 0, 255, 0.2); }
@@ -148,10 +150,9 @@ button.secondary { background: rgba(40, 40, 60, 0.9); border: 2px solid rgba(180
   </div>
 
   <div class="content">
-    <!-- GENERATE -->
     <div class="panel active" id="panel-generate">
       <h2>🔗 Generate Loadstring URL</h2>
-      <div class="info">💡 Paste kode Lua atau URL script. Bakal dapet loadstring yang nunjuk ke VarzXPaste.</div>
+      <div class="info">💡 Paste kode Lua atau URL script. Kode bakal disimpen di Firebase, URL-nya pendek.</div>
 
       <div class="modeSwitch">
         <button class="active" id="modeCode" onclick="setMode('code')">📝 Paste Kode</button>
@@ -176,13 +177,6 @@ button.secondary { background: rgba(40, 40, 60, 0.9); border: 2px solid rgba(180
             <button onclick="copyField('pasteUrl')">📋</button>
           </div>
         </div>
-        <div class="resultItem">
-          <label>Raw URL</label>
-          <div class="copyRow">
-            <input readonly id="rawUrl">
-            <button onclick="copyField('rawUrl')">📋</button>
-          </div>
-        </div>
         <div class="resultItem highlight">
           <label>⚡ Loadstring</label>
           <div class="copyRow">
@@ -194,7 +188,6 @@ button.secondary { background: rgba(40, 40, 60, 0.9); border: 2px solid rgba(180
       </div>
     </div>
 
-    <!-- LIST -->
     <div class="panel" id="panel-list">
       <h2>📋 Daftar Executor</h2>
       <div class="grid" id="execGrid"></div>
@@ -202,7 +195,6 @@ button.secondary { background: rgba(40, 40, 60, 0.9); border: 2px solid rgba(180
       <div class="grid" id="scriptGrid"></div>
     </div>
 
-    <!-- ADMIN -->
     <div class="panel" id="panel-admin">
       <h2>⚙️ Developer Panel</h2>
       <div class="info">👑 Cuma developer yang bisa akses.</div>
@@ -229,7 +221,7 @@ button.secondary { background: rgba(40, 40, 60, 0.9); border: 2px solid rgba(180
         <button onclick="addScript()">➕ Tambah Script</button>
       </div>
 
-      <h3 style="margin-top:25px;color:#00ffff;">🗑️ Hapus Data</h3>
+      <h3>🗑️ Hapus Data</h3>
       <div id="deleteList"></div>
     </div>
   </div>
@@ -237,7 +229,27 @@ button.secondary { background: rgba(40, 40, 60, 0.9); border: 2px solid rgba(180
 
 <div class="toast" id="toast"></div>
 
+<!-- ===== FIREBASE SDK ===== -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
 <script>
+// ============================================
+// FIREBASE CONFIG
+// ============================================
+const firebaseConfig = {
+  apiKey: "AIzaSyDp_3SDiQUAGX0_gw8BYtO2Ecnypl1GlgE",
+  authDomain: "project1-f57d6.firebaseapp.com",
+  databaseURL: "https://project1-f57d6-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "project1-f57d6",
+  storageBucket: "project1-f57d6.firebasestorage.app",
+  messagingSenderId: "722737960517",
+  appId: "1:722737960517:web:f465039879d08fa306b52c"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
 // ============================================
 // CONFIG
 // ============================================
@@ -367,7 +379,19 @@ function setMode(mode) {
 }
 
 // ============================================
-// GENERATE — ENCODE KODE KE URL VARZXPASTE
+// GENERATE SLUG RANDOM (6 karakter)
+// ============================================
+function genSlug() {
+  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+  let slug = "";
+  for (let i = 0; i < 6; i++) {
+    slug += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return slug;
+}
+
+// ============================================
+// GENERATE — SIMPEN KE FIREBASE
 // ============================================
 function generateLoadstring() {
   const input = document.getElementById("codeInput").value.trim();
@@ -377,59 +401,50 @@ function generateLoadstring() {
   if (!input) return toast("Input kosong bre!", true);
 
   btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> Generating...';
+  btn.innerHTML = '<span class="spinner"></span> Uploading...';
   document.getElementById("resultBox").style.display = "none";
 
-  // Kalo mode URL, fetch dulu isinya
   if (currentMode === "url") {
     fetch(input)
       .then(r => {
         if (!r.ok) throw new Error("HTTP " + r.status);
         return r.text();
       })
-      .then(text => {
-        doGenerate(text, name, btn);
-      })
+      .then(text => saveToFirebase(text, name, btn))
       .catch(e => {
         btn.disabled = false;
         btn.textContent = "🚀 Generate";
         toast("Gagal fetch URL: " + e.message, true);
       });
   } else {
-    doGenerate(input, name, btn);
+    saveToFirebase(input, name, btn);
   }
 }
 
-function doGenerate(pasteCode, name, btn) {
-  try {
-    // Encode kode ke Base64 URL-safe
-    const encoded = btoa(unescape(encodeURIComponent(pasteCode)))
-      .replace(/\+/g, "-")
-      .replace(/\//g, "_")
-      .replace(/=+$/, "");
+function saveToFirebase(pasteCode, name, btn) {
+  const slug = genSlug();
 
-    // Generate slug random 6 karakter
-    const slug = Math.random().toString(36).substring(2, 8);
-
-    // URL VarzXPaste dengan data di hash
-    const viewUrl = VARZX_PASTE_URL + "/#" + slug + ":" + encoded;
-    const rawUrl = viewUrl;
-
-    const loadstring = 'loadstring(game:HttpGet("' + rawUrl + '"))()';
+  db.ref("pastes/" + slug).set({
+    code: pasteCode,
+    title: name || "VarzX Hub - " + new Date().toLocaleDateString("id-ID"),
+    createdAt: Date.now(),
+    views: 0
+  }).then(() => {
+    const viewUrl = VARZX_PASTE_URL + "/" + slug;
+    const loadstring = 'loadstring(game:HttpGet("' + viewUrl + '"))()';
 
     document.getElementById("pasteUrl").value = viewUrl;
-    document.getElementById("rawUrl").value = rawUrl;
     document.getElementById("loadstring").value = loadstring;
-    document.getElementById("resultMeta").textContent = "📊 Ukuran: " + pasteCode.length + " chars | Slug: " + slug;
+    document.getElementById("resultMeta").textContent = "📊 Ukuran: " + pasteCode.length + " chars | 🔗 Slug: " + slug;
     document.getElementById("resultBox").style.display = "block";
 
     toast("Loadstring berhasil digenerate!");
-  } catch (e) {
-    toast("Error: " + e.message, true);
-  }
-
-  btn.disabled = false;
-  btn.textContent = "🚀 Generate";
+  }).catch(e => {
+    toast("Firebase error: " + e.message, true);
+  }).finally(() => {
+    btn.disabled = false;
+    btn.textContent = "🚀 Generate";
+  });
 }
 
 function clearGen() {
@@ -536,4 +551,4 @@ window.addEventListener("load", () => {
 });
 </script>
 </body>
-</html>
+  </html>
