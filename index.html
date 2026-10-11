@@ -30,7 +30,6 @@ body::after {
   pointer-events: none; z-index: 0; animation: orbPulse 6s ease-in-out infinite alternate;
 }
 @keyframes orbPulse { 0% { opacity: 0.6; transform: scale(1); } 100% { opacity: 1; transform: scale(1.1); } }
-.container { position: relative; z-index: 1; max-width: 1150px; margin: 0 auto; padding: 20px; }
 
 /* LANDING */
 #landing { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; position: relative; z-index: 1; }
@@ -152,7 +151,7 @@ button.secondary { background: rgba(40, 40, 60, 0.9); border: 2px solid rgba(180
   <div class="content">
     <div class="panel active" id="panel-generate">
       <h2>🔗 Generate Loadstring URL</h2>
-      <div class="info">💡 Paste kode Lua atau URL script. Kode bakal disimpen di Firebase, URL-nya pendek.</div>
+      <div class="info">💡 Paste kode Lua atau URL script. Kode disimpen di Firebase, URL-nya pendek. Roblox baca dari endpoint <b>/raw/</b>.</div>
 
       <div class="modeSwitch">
         <button class="active" id="modeCode" onclick="setMode('code')">📝 Paste Kode</button>
@@ -171,10 +170,17 @@ button.secondary { background: rgba(40, 40, 60, 0.9); border: 2px solid rgba(180
       <div class="result" id="resultBox" style="display:none;">
         <h3>✅ Berhasil!</h3>
         <div class="resultItem">
-          <label>VarzXPaste URL</label>
+          <label>View URL (buat dibuka di browser)</label>
           <div class="copyRow">
-            <input readonly id="pasteUrl">
-            <button onclick="copyField('pasteUrl')">📋</button>
+            <input readonly id="viewUrl">
+            <button onclick="copyField('viewUrl')">📋</button>
+          </div>
+        </div>
+        <div class="resultItem">
+          <label>Raw URL (buat Roblox)</label>
+          <div class="copyRow">
+            <input readonly id="rawUrl">
+            <button onclick="copyField('rawUrl')">📋</button>
           </div>
         </div>
         <div class="resultItem highlight">
@@ -253,7 +259,7 @@ const db = firebase.database();
 // ============================================
 // CONFIG
 // ============================================
-const VARZX_PASTE_URL = "https://varzxpaste.vercel.app"; // ⚠️ GANTI INI
+const VARZX_PASTE_URL = "https://varzxpaste.vercel.app"; // ⚠️ GANTI
 const KEYS = {
   USER: "VarzXHubWeb",
   DEV: "VARZXHB"
@@ -301,11 +307,7 @@ function verifyKey() {
   const btn = document.getElementById("verifyBtn");
 
   err.textContent = "";
-
-  if (!input) {
-    err.textContent = "❌ Key kosong bre!";
-    return;
-  }
+  if (!input) { err.textContent = "❌ Key kosong bre!"; return; }
 
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span> Verifying...';
@@ -379,19 +381,17 @@ function setMode(mode) {
 }
 
 // ============================================
-// GENERATE SLUG RANDOM (6 karakter)
+// GENERATE SLUG
 // ============================================
 function genSlug() {
   const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
   let slug = "";
-  for (let i = 0; i < 6; i++) {
-    slug += chars[Math.floor(Math.random() * chars.length)];
-  }
+  for (let i = 0; i < 6; i++) slug += chars[Math.floor(Math.random() * chars.length)];
   return slug;
 }
 
 // ============================================
-// GENERATE — SIMPEN KE FIREBASE
+// GENERATE
 // ============================================
 function generateLoadstring() {
   const input = document.getElementById("codeInput").value.trim();
@@ -406,10 +406,7 @@ function generateLoadstring() {
 
   if (currentMode === "url") {
     fetch(input)
-      .then(r => {
-        if (!r.ok) throw new Error("HTTP " + r.status);
-        return r.text();
-      })
+      .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.text(); })
       .then(text => saveToFirebase(text, name, btn))
       .catch(e => {
         btn.disabled = false;
@@ -431,9 +428,11 @@ function saveToFirebase(pasteCode, name, btn) {
     views: 0
   }).then(() => {
     const viewUrl = VARZX_PASTE_URL + "/" + slug;
-    const loadstring = 'loadstring(game:HttpGet("' + viewUrl + '"))()';
+    const rawUrl = VARZX_PASTE_URL + "/raw/" + slug;
+    const loadstring = 'loadstring(game:HttpGet("' + rawUrl + '"))()';
 
-    document.getElementById("pasteUrl").value = viewUrl;
+    document.getElementById("viewUrl").value = viewUrl;
+    document.getElementById("rawUrl").value = rawUrl;
     document.getElementById("loadstring").value = loadstring;
     document.getElementById("resultMeta").textContent = "📊 Ukuran: " + pasteCode.length + " chars | 🔗 Slug: " + slug;
     document.getElementById("resultBox").style.display = "block";
